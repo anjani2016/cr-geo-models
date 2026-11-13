@@ -2,10 +2,10 @@
 
 - **Repo / branch:** `cr-geo-models`, `feat/ml1-fire-data-staging` (from `c04b89b`)
 - **Commit SHA:** 618b7fb1784b9e2d392bca851087f99ddc26da6b (change commit)
-- **Status:** built, self-reviewed, sign-off pending
+- **Status:** committed, self-reviewed, signed off
 - **Plan:** `docs/plans/ml1_fire_data_staging.md` (this branch); parent: lake twin `plan_open_lake_models_colab.md` rev 3 §3 ML1
 - **Owner direction (2026-11-12), verbatim:** "Sign off, start ML1"
-- **Roles:** Implementer: Claude Code. Reviewer: Claude Code self-review per the owner's instruction recorded in `AGENTS.md`. Owner sign-off: pending.
+- **Roles:** Implementer: Claude Code. Reviewer: Claude Code self-review per the owner's instruction recorded in `AGENTS.md`. Owner sign-off: 2026-11-12.
 - **Colab units used:** 0
 
 ## Scope
@@ -61,4 +61,4 @@ Code that turns NBAC fire perimeters and Sentinel-2 L2A imagery into 512 × 512 
 no review text on file (self-reviewed per the owner's instruction)
 
 ## Sign-off
-pending
+Owner committed on 2026-11-12. Owner's words, verbatim: "Sign off, run pilot".
