@@ -16,7 +16,7 @@ selection:
     area_ha: POLY_HA
     start: AG_SDATE
     end: AG_EDATE
-  years: [2019, 2020, 2021, 2022, 2023, 2024]  # gate choice; Sentinel-2 L2A coverage of these years on Earth Search [verify]
+  years: [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]  # gate choice (owner 2026-11-12: "we can go more years"); Earth Search sentinel-2-l2a returned items from 2017, none for 2016 (bbox -90.5,50,-90,50.5, Aug-Oct)
   min_area_ha: 500        # gate choice
   prior_years_ignore: 3   # gate choice: scars from the 3 years before are labelled ignore (-1)
   val_fraction: 0.15      # gate choice
