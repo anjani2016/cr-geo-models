@@ -26,3 +26,24 @@ training:
   tracking_uri: sqlite:////content/work/mlflow.db   # MLflow 3.18 refuses the plain-file store (maintenance mode)
   output_dir: /content/work/out
   run_name: finetune-smoke
+
+# Full run (gate ML3c). Owner, 2026-11-12: "Yes, start full run" (recommended setup).
+full:
+  gpu: L4
+  max_units: 40                # owner-approved cap for this run
+  rate_units_per_hour: 1.94    # L4 rate shown by `colab usage` on 2026-11-12
+  staging_config: configs/ml1_fire_staging.yaml
+  nbac_base_url: https://cwfis.cfs.nrcan.gc.ca/downloads/nbac/
+  nbac_checksums: data_manifest/nbac_20260513_sha256.txt
+  experiment_name: cr-geo-models-fire
+  tracking_uri: https://mlflow.centauri-research.com
+  start_from: burnscars_checkpoint   # fine-tune the US BurnScars model, not the bare backbone
+  normalisation: training_chips      # band statistics from the Canadian training chips
+  max_epochs: 50                     # base config value
+  early_stopping_patience: 15        # base config value
+  lr: 1.0e-4                         # base config value (AdamW)
+  batch_size: 8                      # base config value
+  num_workers: 4
+  precision: bf16-mixed
+  prediction_images: 4
+  seed: 42

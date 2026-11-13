@@ -6,6 +6,7 @@ Statistics come from training chips only (labels != -1), so validation and test 
 from __future__ import annotations
 
 import copy
+import json
 import hashlib
 import shutil
 from pathlib import Path
@@ -109,8 +110,14 @@ def terratorch_config(
     means: list[float],
     stds: list[float],
     training: Mapping[str, Any],
+    tags: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    """A TerraTorch config from the vendored base: our data folders, normalisation and training limits, MLflow logging."""
+    """A TerraTorch config from the vendored base: our data folders, normalisation and training limits, MLflow logging.
+
+    Optional `training` keys (gate ML3b): log_model (False | True: checkpoints become MLflow artifacts at the end of
+    training), save_last (default True), save_top_k (default 1), prediction_images (0 = off; N = images per val epoch).
+    `tags` (from ml.tracking.run_tags) are attached to the MLflow run.
+    """
     if len(means) != 6 or len(stds) != 6 or any(s <= 0 for s in stds):
         raise TrainPrepError("need six means and six positive stds in the model's band order")
     for key in ("max_epochs", "batch_size", "experiment_name", "tracking_uri", "output_dir"):
@@ -131,15 +138,31 @@ def terratorch_config(
             trainer[key] = training[key]
     if "precision" in training:
         trainer["precision"] = training["precision"]
-    trainer["logger"] = {
-        "class_path": "lightning.pytorch.loggers.MLFlowLogger",
-        "init_args": {"experiment_name": training["experiment_name"], "tracking_uri": training["tracking_uri"],
-                      "run_name": training.get("run_name")},
-    }
-    trainer["callbacks"] = [c for c in trainer.get("callbacks", []) if c.get("class_path") != "ModelCheckpoint"] + [
-        {"class_path": "ModelCheckpoint", "init_args": {"monitor": "val/loss", "save_last": True,
-                                                         "dirpath": f"{training['output_dir'].rstrip('/')}/checkpoints"}}
-    ]
+    log_model = training.get("log_model", False)
+    if not (log_model is True or log_model is False):  # identity: 1 == True must not pass
+        raise TrainPrepError("training.log_model must be true or false")
+    logger_args = {"experiment_name": training["experiment_name"], "tracking_uri": training["tracking_uri"],
+                   "run_name": training.get("run_name"), "log_model": log_model}
+    trainer["logger"] = {"class_path": "lightning.pytorch.loggers.MLFlowLogger", "init_args": logger_args}
+    top_k = training.get("save_top_k", 1)
+    if isinstance(top_k, bool) or not isinstance(top_k, int) or top_k < 1:
+        raise TrainPrepError("training.save_top_k must be a positive integer")
+    callbacks = [c for c in trainer.get("callbacks", []) if c.get("class_path") not in (
+        "ModelCheckpoint", "ml.fire.callbacks.PredictionImages", "ml.fire.callbacks.RunTags")]
+    if tags:  # as a JSON string so the config parser can't turn "42" into 42 (MLflow tags must be text)
+        callbacks.append({"class_path": "ml.fire.callbacks.RunTags", "init_args": {
+            "tags_json": json.dumps({str(k): str(v) for k, v in tags.items()}, sort_keys=True)}})
+    callbacks.append({"class_path": "ModelCheckpoint", "init_args": {
+        "monitor": "val/loss", "mode": "min", "save_top_k": top_k, "save_last": bool(training.get("save_last", True)),
+        "dirpath": f"{training['output_dir'].rstrip('/')}/checkpoints"}})
+    n_images = training.get("prediction_images", 0)
+    if isinstance(n_images, bool) or not isinstance(n_images, int) or n_images < 0:
+        raise TrainPrepError("training.prediction_images must be a non-negative integer")
+    if n_images:
+        callbacks.append({"class_path": "ml.fire.callbacks.PredictionImages", "init_args": {
+            "n_images": n_images, "out_dir": f"{training['output_dir'].rstrip('/')}/predictions",
+            "log_to_mlflow": bool(training.get("images_to_mlflow", False))}})
+    trainer["callbacks"] = callbacks
     cfg["seed_everything"] = int(training.get("seed", cfg.get("seed_everything", 0)))
     return cfg
 

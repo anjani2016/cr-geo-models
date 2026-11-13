@@ -1,0 +1,175 @@
+"""Training callbacks (gate ML3b). Lightning is imported lazily so the CPU tests don't need it.
+
+PredictionImages: after each validation epoch, renders a few validation chips as
+[false colour | NBAC outline | predicted outline] and logs the PNGs to the run's MLflow artifacts.
+"""
+
+from __future__ import annotations
+
+import tempfile
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+
+YELLOW, CYAN = (255, 255, 0), (0, 255, 255)
+FALSE_COLOUR = (5, 3, 2)  # SWIR2, NIR-narrow, red in the model's band order: burns show red/brown
+
+
+def _stretch(band: np.ndarray, valid: np.ndarray) -> np.ndarray:
+    values = band[valid] if valid.any() else band.ravel()
+    lo, hi = np.percentile(values, 2), np.percentile(values, 98)
+    return np.clip((band - lo) / (hi - lo + 1e-9) * 255, 0, 255)
+
+
+def _edges(mask: np.ndarray) -> np.ndarray:
+    edge = np.zeros_like(mask, dtype=bool)
+    m = mask
+    edge[1:-1, 1:-1] = m[1:-1, 1:-1] & ~(m[:-2, 1:-1] & m[2:, 1:-1] & m[1:-1, :-2] & m[1:-1, 2:])
+    return edge
+
+
+def render_comparison(image: np.ndarray, label: np.ndarray, prediction: np.ndarray, gap: int = 6) -> np.ndarray:
+    """uint8 (3, H, 3W + 2*gap): false colour; false colour + NBAC outline (yellow); false colour + predicted outline (cyan).
+    Pixels labelled -1 (ignore) are shown grey in the outline panels."""
+    if image.ndim != 3 or image.shape[0] < 6:
+        raise ValueError(f"image must be (bands>=6, H, W), got {image.shape}")
+    if label.shape != image.shape[1:] or prediction.shape != image.shape[1:]:
+        raise ValueError("image, label and prediction sizes differ")
+    valid = label != -1
+    base = np.stack([_stretch(image[b].astype(np.float64), valid) for b in FALSE_COLOUR])
+    panels = [base.copy()]
+    for mask, colour in ((label == 1, YELLOW), (prediction == 1, CYAN)):
+        panel = base.copy()
+        panel[:, ~valid] = 128
+        edge = _edges(mask)
+        for c in range(3):
+            panel[c][edge] = colour[c]
+        panels.append(panel)
+    spacer = np.full((3, image.shape[1], gap), 255.0)
+    out = np.concatenate([panels[0], spacer, panels[1], spacer, panels[2]], axis=2)
+    return out.astype(np.uint8)
+
+
+def write_png(array: np.ndarray, path: str | Path) -> Path:
+    import warnings
+
+    import rasterio
+    from rasterio.errors import NotGeoreferencedWarning
+
+    path = Path(path)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", NotGeoreferencedWarning)
+        with rasterio.open(path, "w", driver="PNG", width=array.shape[2], height=array.shape[1], count=3, dtype="uint8") as dst:
+            dst.write(array)
+    return path
+
+
+def _logits(output: Any):
+    return getattr(output, "output", output)
+
+
+try:  # Only on the training machine (lightning installed); the CPU test environment has no lightning.
+    from lightning.pytorch.callbacks import Callback
+except ImportError:  # pragma: no cover - exercised on Colab
+    Callback = object  # type: ignore[assignment,misc]
+
+
+class RunTags(Callback):  # type: ignore[misc,valid-type]
+    """Sets string MLflow tags when fitting starts. Passing tags to MLFlowLogger through a TerraTorch YAML config lets the
+    config parser turn values like "42" back into numbers, which MLflow rejects (ML3b live check, 2026-11-12:
+    TypeError in RunTag.to_proto). A JSON string argument stays a string."""
+
+    def __init__(self, tags_json: str = "{}"):
+        super().__init__()
+        import json
+
+        self.tags = {str(k): str(v) for k, v in json.loads(tags_json).items()}
+
+    def _apply(self, trainer):
+        logger = trainer.logger
+        for key, value in self.tags.items():
+            logger.experiment.set_tag(logger.run_id, key, value)
+
+    def on_fit_start(self, trainer, pl_module):
+        self._apply(trainer)
+
+    def on_test_start(self, trainer, pl_module):
+        self._apply(trainer)
+
+
+class BestWeightsExport(Callback):  # type: ignore[misc,valid-type]
+    """When the monitored checkpoint improves, write the model weights (fp16, no optimizer state) to `path` atomically,
+    plus a small JSON note. Lets the Mac pull a usable best model while training runs: the first ML3c run on Colab was
+    ended by the runtime after epoch 14 and its checkpoints were lost (2026-11-13)."""
+
+    def __init__(self, path: str, monitor: str = "val/loss"):
+        super().__init__()
+        self.path, self.monitor, self.best = Path(path), monitor, None
+
+    def on_validation_end(self, trainer, pl_module):
+        if trainer.sanity_checking:
+            return
+        value = trainer.callback_metrics.get(self.monitor)
+        if value is None:
+            return
+        value = float(value)
+        if self.best is not None and value >= self.best:
+            return
+        self.best = value
+        try:
+            import json
+
+            import torch
+
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            state = {k: v.half() if v.is_floating_point() else v for k, v in pl_module.state_dict().items()}
+            tmp = self.path.with_suffix(".tmp")
+            torch.save(state, tmp)
+            tmp.replace(self.path)
+            note = {"epoch": trainer.current_epoch, self.monitor: value, "dtype": "float16", "format": "torch state_dict of the task"}
+            self.path.with_suffix(".json").write_text(json.dumps(note))
+        except Exception as exc:
+            print(f"[BestWeightsExport] skipped: {type(exc).__name__}: {exc}", flush=True)
+
+
+class PredictionImages(Callback):  # type: ignore[misc,valid-type]
+    """Logs `n_images` rendered validation chips to MLflow each `every_n_epochs` epochs. Never stops training:
+    a failure to render or upload is printed and skipped."""
+
+    def __init__(self, n_images: int = 4, every_n_epochs: int = 1, out_dir: str | None = None, log_to_mlflow: bool = False):
+        """out_dir: save PNGs there (downloaded after the run). log_to_mlflow: also log them as run artifacts. The owner's
+        server stores artifacts directly in a GCS bucket, which Colab can't write to yet (owner, 2026-11-12: metrics live,
+        artifacts later), so the default is local files only."""
+        super().__init__()
+        self.n_images, self.every_n_epochs = int(n_images), int(every_n_epochs)
+        self.out_dir, self.log_to_mlflow = out_dir, bool(log_to_mlflow)
+        self._batch = None
+
+    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
+        if batch_idx == 0 and self._batch is None:
+            self._batch = {k: v for k, v in batch.items() if k in ("image", "mask")}
+
+    def on_validation_epoch_end(self, trainer, pl_module):
+        batch, self._batch = self._batch, None
+        epoch = trainer.current_epoch
+        if batch is None or trainer.sanity_checking or epoch % self.every_n_epochs:
+            return
+        try:
+            import torch
+
+            with torch.no_grad():
+                logits = _logits(pl_module(batch["image"]))
+            preds = logits.argmax(dim=1).cpu().numpy()
+            images = batch["image"].float().cpu().numpy()
+            masks = batch["mask"].cpu().numpy()
+            logger = trainer.logger
+            with tempfile.TemporaryDirectory() as tmp:
+                target = Path(self.out_dir) / f"epoch_{epoch:03d}" if self.out_dir else Path(tmp)
+                target.mkdir(parents=True, exist_ok=True)
+                for i in range(min(self.n_images, images.shape[0])):
+                    png = write_png(render_comparison(images[i], masks[i], preds[i]), target / f"val_{i:02d}.png")
+                    if self.log_to_mlflow:
+                        logger.experiment.log_artifact(logger.run_id, str(png), artifact_path=f"predictions/epoch_{epoch:03d}")
+        except Exception as exc:  # never kill a long GPU run over a picture
+            print(f"[PredictionImages] skipped epoch {epoch}: {type(exc).__name__}: {exc}", flush=True)
