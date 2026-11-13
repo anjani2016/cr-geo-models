@@ -1,0 +1,28 @@
+# Gate ML3 run config. Plan: docs/plans/ml3_burn_scar_finetune.md
+name: burn-scar-ca-v0
+task: segmentation
+seed: 42
+base_model:
+  id: ibm-nasa-geospatial/Prithvi-EO-2.0-300M-BurnScars
+  revision: a3f2c410e45b8ac7417976614528a872f024d831
+  checkpoint_file: Prithvi_EO_V2_300M_BurnScars.pt
+  vendored_config: configs/vendor/prithvi_eo_v2_300m_burnscars_config.yaml
+data_manifest: data_manifest/ml1_fire_chips_v1.json
+
+# Smoke-test settings (gate ML3 build). The full run gets its own values after owner review.
+smoke:
+  subset: {train: 24, val: 8, test: 16}   # gate choice: chips per split, whole fires
+  max_units: 10                            # owner cap for the smoke test
+  gpu: L4                                  # fallback T4 if L4 is refused
+  terratorch: "terratorch==1.2.14"         # latest on PyPI 2026-11-12; pinned from the resolved install afterwards
+training:
+  max_epochs: 1
+  batch_size: 4
+  num_workers: 2
+  limit_train_batches: 6
+  limit_val_batches: 2
+  precision: bf16-mixed     # as in the base config
+  experiment_name: ml3-smoke
+  tracking_uri: file:/content/work/mlruns
+  output_dir: /content/work/out
+  run_name: finetune-smoke
