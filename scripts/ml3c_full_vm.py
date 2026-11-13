@@ -76,6 +76,19 @@ def nbac():
 
 
 def stage():
+    staged = WORK / "staged"
+    if (staged / "manifest.json").exists():
+        # Chips staged elsewhere (the Mac) with the same code and config, copied here. Use them only if every file matches
+        # the manifest's size and SHA-256. Staging on a VM in asia-southeast1 read Sentinel-2 from AWS us-west-2 at about
+        # 2.6 chips a minute (ML3c, 2026-11-13), several times slower than the Mac.
+        from ml.manifest import load_manifest, verify
+
+        manifest = load_manifest(staged / "manifest.json")
+        verify(manifest, staged)
+        counts = {s: len(list((staged / s).glob("*_img.tif"))) for s in ("train", "val", "test")}
+        if min(counts.values()) == 0:
+            raise RuntimeError(f"a split is empty: {counts}")
+        return {"chips": counts, "source": "pre-staged, manifest verified", "files": len(manifest["files"])}
     cmd = [sys.executable, "-m", "ml.fire.stage", "--config", str(REPO / state["full"]["staging_config"]), "--out", str(WORK / "staged")]
     for f in state["nbac_files"]:
         cmd += ["--nbac", f]
