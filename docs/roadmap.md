@@ -3,7 +3,7 @@
 What this repo has built, what's next, and how the work runs. Updated at the end of each gate. Gate details live in `docs/audit/gates/`;
 the rules for every gate are in `AGENTS.md`.
 
-**Last updated:** 2026-11-13.
+**Last updated:** 2026-11-13 (ML7 in progress).
 
 ## Status by gate
 
@@ -16,7 +16,7 @@ the rules for every gate are in `AGENTS.md`.
 | ML3d | **Severity classes**: train the model to label each burned pixel low / moderate / high severity (an image-segmentation model change, not lake analysis) | Parked (owner, 2026-11-13) | |
 | ML5 | Lake chlorophyll-a (and possibly water clarity) from Sentinel-2: gradient-boosting baseline, then a mixture density network; train on open spectral datasets, test on held-out lakes and years | Parked (owner, 2026-11-13) | |
 | ML6 | Optional: forecasting backtest of lake time series with open foundation models | Parked (owner, 2026-11-13) | |
-| ML7 | Publishing: Hugging Face model card and weights, Zenodo DOI for a tagged release, ORCID link | **Next** | |
+| ML7 | Publishing: Hugging Face model card and weights, Zenodo DOI for a tagged release, ORCID link | **In progress:** card, notice, weights (safetensors) and staging built; nothing published yet | `gate_ml7_publish.md` |
 
 **Held-out result for `burn-scar-ca` v1** (Quebec boreal fires, 274 chips, from `trainer.test`): burn-scar IoU 0.873 against 0.566 for the US
 BurnScars model it started from; mIoU 0.922 against 0.706. Scores measure agreement with NBAC perimeters, not field-checked ground truth, on one
@@ -31,7 +31,7 @@ Mapping lakes after fires is separate work in another repo and is not part of th
    limits, tier label, licences and attributions, citation. Source: `docs/reports/2026-11-13_burn_scar_ca_v1_training_report.md`.
 2. **Files:** the registered v1 weights (fp16, SHA-256 starting `b471b653`), `norm_stats.json`, configs, and a short inference example. The weights
    are on the owner's machine at `data/ml3c_r2/model_v1/` (git-ignored); check the SHA-256 before upload.
-3. **Checks before publishing:** Copernicus Sentinel attribution wording `[verify]`; NBAC (OGL-Canada) attribution text; Prithvi (Apache-2.0) notice and
+3. **Checks before publishing:** Copernicus Sentinel attribution wording (confirmed in ML7: 2017–2026); NBAC (OGL-Canada) attribution text; Prithvi (Apache-2.0) notice and
    base-model citation; a claims sweep of the card (no "verified", "real-time" or partner names); licence for the fine-tuned weights (Apache-2.0 proposed, owner decides).
 4. **Publishing (owner does or confirms each step):** owner creates the Hugging Face model repo under `centauri-research2019` and a write token;
    upload; tag a code release on GitHub; Zenodo archives the release and gives a DOI; owner adds the DOI to ORCID.

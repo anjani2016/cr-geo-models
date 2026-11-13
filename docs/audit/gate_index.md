@@ -10,3 +10,4 @@ What each gate ID stands for. Status lives in each gate record. The plan is in t
 | ML3 | Canadian burn-scar fine-tune (part 1: build and Colab smoke test) | `feat/ml3-burn-scar-finetune` | [record](gates/gate_ml3_smoke.md) |
 | ML3b | Live MLflow tracking on the Centauri Research server | `feat/ml3b-mlflow-tracking` | [record](gates/gate_ml3b_mlflow_tracking.md) |
 | ML3c | Full Canadian burn-scar fine-tune and held-out test | `feat/ml3c-full-finetune` | [record](gates/gate_ml3c_full_finetune.md) |
+| ML7 | Publish `burn-scar-ca` v1 (Hugging Face card and weights, Zenodo DOI, ORCID) | `feat/ml7-publish` | [record](gates/gate_ml7_publish.md) |
