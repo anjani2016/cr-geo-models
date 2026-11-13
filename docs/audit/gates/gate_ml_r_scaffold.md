@@ -3,10 +3,10 @@
 - **Repo:** `cr-geo-models` (local `~/dev/esg/cr-geo-models`, new, no remote yet)
 - **Branch:** `main` (first commit)
 - **Commit SHA:** b148205e8df1ab757ed68122538796f260efd56c (change commit, 2026-11-12)
-- **Status:** Codex review CHANGES REQUESTED (6 items), all addressed; self-reviewed after that per the owner; sign-off pending
+- **Status:** Codex review CHANGES REQUESTED (6 items), all addressed; self-reviewed after that per the owner; signed off
 - **Plan:** lake twin `docs/plans/plan_open_lake_models_colab.md` revision 3, §3 ML-R
 - **Owner approval (2026-11-12), verbatim:** "Approve, start ML-R"
-- **Roles:** Implementer: Claude Code. Reviewer: Codex for the first round (owner, 2026-11-12, verbatim: "Codex"); Claude Code self-review of the fixes, on the owner's instruction (below). Owner sign-off: pending.
+- **Roles:** Implementer: Claude Code. Reviewer: Codex for the first round (owner, 2026-11-12, verbatim: "Codex"); Claude Code self-review of the fixes, on the owner's instruction (below). Owner sign-off: 2026-11-12.
 - **Route and reason:** Claude Code codes it because it is small (scaffold, four helper modules, tests) and the Colab units expire about 2026-11-21.
   The reviewer must not be Claude Code.
 
@@ -83,4 +83,4 @@ training code, no Colab units used.
 - A sha256 with a trailing space and a `bytes` of 2**70 were both refused.
 
 ## Sign-off
-pending
+Owner committed on 2026-11-12. Owner's words, verbatim: "Sign off, start ML0".
