@@ -2,7 +2,7 @@
 
 - **Repo / branch:** `cr-geo-models`, `feat/ml3b-mlflow-tracking` (from `main` `3fabe25`)
 - **Commit SHA:** pending
-- **Status:** built, self-reviewed, live check passed 2026-11-12 23:51. Owner sign-off pending.
+- **Status:** built, self-reviewed, live check passed 2026-11-12 23:51; signed off.
 - **Owner direction (2026-11-12), verbatim:**
   - "i would like to plug mlflow for model training"
   - Monitoring: "Near-live on your Mac (Recommended)"
@@ -10,7 +10,7 @@
   - "https://mlflow.centauri-research.com/"
   - Credentials: "Training user, file I upload (Recommended)"
   - Checkpoints: "Best one to MLflow server"
-- **Roles:** Implementer and reviewer: Claude Code (self-review per `AGENTS.md`). Owner sign-off: pending.
+- **Roles:** Implementer and reviewer: Claude Code (self-review per `AGENTS.md`). Owner sign-off: 2026-11-12.
 
 ## Server facts (curl, 2026-11-12, no credentials sent)
 - `/health` → 200 `OK`.
@@ -77,4 +77,4 @@
 
 ## Reviewer Verdict & Owner Sign-Off Date
 - **Reviewer Verdict:** no review text on file (self-review per the owner's instruction)
-- **Owner Sign-Off Date:** pending
+- **Owner Sign-Off Date:** Owner committed on 2026-11-12 (owner, verbatim: "Yes, start full run")
