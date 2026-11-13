@@ -6,13 +6,13 @@
   - `5c9e505` (pre-staged chips)
   - `2a9e6db` (best-weights export)
   - `1756c27` (test script)
-  - this record: pending
-- **Status:** a model trained and tested on the held-out split. Self-reviewed; owner sign-off pending. Nothing is published.
+  - this record: `18dc661`
+- **Status:** a model trained and tested on the held-out split. Self-reviewed; signed off. Nothing is published.
 - **Owner direction (2026-11-12/13), verbatim:**
   - "Yes, start full run"
   - "ok, skip drive tonight. going to sleep"
   - credits: "we can go more years. we have 600 credits and they replenish. 200 every month. so not to worry about credits."
-- **Roles:** Implementer and reviewer: Claude Code (self-review per `AGENTS.md`). Owner sign-off: pending.
+- **Roles:** Implementer and reviewer: Claude Code (self-review per `AGENTS.md`). Owner sign-off: 2026-11-13.
 - **Units:** 598.94 → 594.19 = **4.75 units** (`colab usage`) across three L4 sessions, against a 40-unit cap.
 
 ## Model
@@ -64,4 +64,4 @@ Until that's known, long runs need the best-weights export and pull built here, 
 
 ## Reviewer Verdict & Owner Sign-Off Date
 - **Reviewer Verdict:** no review text on file (self-review per the owner's instruction)
-- **Owner Sign-Off Date:** pending
+- **Owner Sign-Off Date:** Owner committed on 2026-11-13 (owner, verbatim: "Sign off ML3c")
