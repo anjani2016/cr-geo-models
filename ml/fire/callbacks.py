@@ -75,6 +75,29 @@ except ImportError:  # pragma: no cover - exercised on Colab
     Callback = object  # type: ignore[assignment,misc]
 
 
+class RunTags(Callback):  # type: ignore[misc,valid-type]
+    """Sets string MLflow tags when fitting starts. Passing tags to MLFlowLogger through a TerraTorch YAML config lets the
+    config parser turn values like "42" back into numbers, which MLflow rejects (ML3b live check, 2026-11-12:
+    TypeError in RunTag.to_proto). A JSON string argument stays a string."""
+
+    def __init__(self, tags_json: str = "{}"):
+        super().__init__()
+        import json
+
+        self.tags = {str(k): str(v) for k, v in json.loads(tags_json).items()}
+
+    def _apply(self, trainer):
+        logger = trainer.logger
+        for key, value in self.tags.items():
+            logger.experiment.set_tag(logger.run_id, key, value)
+
+    def on_fit_start(self, trainer, pl_module):
+        self._apply(trainer)
+
+    def on_test_start(self, trainer, pl_module):
+        self._apply(trainer)
+
+
 class PredictionImages(Callback):  # type: ignore[misc,valid-type]
     """Logs `n_images` rendered validation chips to MLflow each `every_n_epochs` epochs. Never stops training:
     a failure to render or upload is printed and skipped."""

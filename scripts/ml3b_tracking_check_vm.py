@@ -87,8 +87,10 @@ def baseline():
     cfg = yaml.safe_load((WORK / "baseline.yaml").read_text())
     lim = LightningInferenceModel.from_config(str(WORK / "baseline.yaml"), summary["steps"]["configs"]["result"]["checkpoint"])
     largs = cfg["trainer"]["logger"]["init_args"]
+    tag_cb = next((c for c in cfg["trainer"]["callbacks"] if c["class_path"] == "ml.fire.callbacks.RunTags"), None)
+    tags = json.loads(tag_cb["init_args"]["tags_json"]) if tag_cb else None
     logger = MLFlowLogger(experiment_name=largs["experiment_name"], tracking_uri=largs["tracking_uri"],
-                          run_name=largs["run_name"], tags=largs.get("tags"))
+                          run_name=largs["run_name"], tags=tags)
     trainer = Trainer(logger=logger, precision=cfg["trainer"].get("precision", "32"), enable_progress_bar=False)
     metrics = trainer.test(model=lim.model, datamodule=lim.datamodule)
     return {"run_id": logger.run_id, "metrics": metrics}
@@ -122,7 +124,8 @@ def server_view():
 
 if step("record", record) and step("preflight", preflight):
     if step("configs", configs):
-        step("baseline", baseline)
+        if not (WORK / "baseline_done").exists() and step("baseline", baseline):
+            (WORK / "baseline_done").write_text("1")
         step("finetune", finetune)
     step("server_view", server_view)
 summary["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")

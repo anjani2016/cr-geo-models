@@ -6,6 +6,7 @@ Statistics come from training chips only (labels != -1), so validation and test 
 from __future__ import annotations
 
 import copy
+import json
 import hashlib
 import shutil
 from pathlib import Path
@@ -142,13 +143,15 @@ def terratorch_config(
         raise TrainPrepError("training.log_model must be true or false")
     logger_args = {"experiment_name": training["experiment_name"], "tracking_uri": training["tracking_uri"],
                    "run_name": training.get("run_name"), "log_model": log_model}
-    if tags:
-        logger_args["tags"] = {str(k): str(v) for k, v in tags.items()}
     trainer["logger"] = {"class_path": "lightning.pytorch.loggers.MLFlowLogger", "init_args": logger_args}
     top_k = training.get("save_top_k", 1)
     if isinstance(top_k, bool) or not isinstance(top_k, int) or top_k < 1:
         raise TrainPrepError("training.save_top_k must be a positive integer")
-    callbacks = [c for c in trainer.get("callbacks", []) if c.get("class_path") not in ("ModelCheckpoint", "ml.fire.callbacks.PredictionImages")]
+    callbacks = [c for c in trainer.get("callbacks", []) if c.get("class_path") not in (
+        "ModelCheckpoint", "ml.fire.callbacks.PredictionImages", "ml.fire.callbacks.RunTags")]
+    if tags:  # as a JSON string so the config parser can't turn "42" into 42 (MLflow tags must be text)
+        callbacks.append({"class_path": "ml.fire.callbacks.RunTags", "init_args": {
+            "tags_json": json.dumps({str(k): str(v) for k, v in tags.items()}, sort_keys=True)}})
     callbacks.append({"class_path": "ModelCheckpoint", "init_args": {
         "monitor": "val/loss", "mode": "min", "save_top_k": top_k, "save_last": bool(training.get("save_last", True)),
         "dirpath": f"{training['output_dir'].rstrip('/')}/checkpoints"}})
