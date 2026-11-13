@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+
+# Secrets
+.env*
+*.pem
+*.key
+*credentials*.json
+*service-account*.json
+
+# Data, models and runs (live on Drive / GCS, never in git)
+data/
+chips/
+checkpoints/
+mlruns/
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+*.tif
+*.tiff
+*.zarr/
+*.parquet
+*.nc
+
+# Tools
+.claude/settings.local.json
+.claude/launch.json
+.ipynb_checkpoints/
+.DS_Store

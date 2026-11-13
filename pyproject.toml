@@ -1,0 +1,15 @@
+[project]
+name = "cr-geo-models"
+version = "0.0.0"
+description = "Open-weight geospatial models from Centauri Research"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.11"
+authors = [{ name = "Alpha Centauri Ventures Inc." }]
+
+[tool.setuptools]
+packages = ["ml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

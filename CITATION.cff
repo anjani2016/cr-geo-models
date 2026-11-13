@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "cr-geo-models: open-weight geospatial models from Centauri Research"
+type: software
+license: Apache-2.0
+authors:
+  - family-names: Duddukuru
+    given-names: Anjani
+    affiliation: "Alpha Centauri Ventures Inc."
+# Owner to add before the first release: orcid, repository-code, version, date-released.
