@@ -127,3 +127,27 @@ def test_macos_appledouble_files_are_ignored(tmp_path):
     (tmp_path / "train" / "._2021-1_00_label.tif").write_bytes(b"\x00\x05\x16\x07junk")
     assert [p[0].name for p in chip_pairs(tmp_path / "train")] == ["2021-1_00_img.tif", "2021-2_00_img.tif"]
     assert band_stats(tmp_path / "train")["chips"] == 2
+
+
+def test_config_tags_best_checkpoint_and_prediction_images():
+    training = dict(TRAINING, log_model=True, save_last=False, save_top_k=1, prediction_images=4)
+    cfg = terratorch_config(BASE, "/x", [0.1] * 6, [0.1] * 6, training, tags={"cr.commit_sha": "abc"})
+    logger = cfg["trainer"]["logger"]["init_args"]
+    assert logger["log_model"] is True and logger["tags"] == {"cr.commit_sha": "abc"}
+    ckpt = next(c for c in cfg["trainer"]["callbacks"] if c["class_path"] == "ModelCheckpoint")["init_args"]
+    assert ckpt["save_top_k"] == 1 and ckpt["save_last"] is False and ckpt["mode"] == "min"
+    images = [c for c in cfg["trainer"]["callbacks"] if c["class_path"] == "ml.fire.callbacks.PredictionImages"]
+    assert images == [{"class_path": "ml.fire.callbacks.PredictionImages", "init_args": {"n_images": 4}}]
+
+
+def test_config_defaults_keep_smoke_behaviour():
+    cfg = terratorch_config(BASE, "/x", [0.1] * 6, [0.1] * 6, TRAINING)
+    assert cfg["trainer"]["logger"]["init_args"]["log_model"] is False and "tags" not in cfg["trainer"]["logger"]["init_args"]
+    assert not any(c["class_path"].endswith("PredictionImages") for c in cfg["trainer"]["callbacks"])
+
+
+@pytest.mark.parametrize("key,value", [("log_model", "all"), ("log_model", 1), ("save_top_k", 0), ("save_top_k", True),
+                                       ("prediction_images", -1), ("prediction_images", 2.5)])
+def test_config_rejects_bad_tracking_options(key, value):
+    with pytest.raises(TrainPrepError):
+        terratorch_config(BASE, "/x", [0.1] * 6, [0.1] * 6, dict(TRAINING, **{key: value}))
