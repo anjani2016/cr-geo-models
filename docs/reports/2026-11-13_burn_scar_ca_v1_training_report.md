@@ -16,7 +16,7 @@ Output tier: `Modeled (Simulation)`, a model estimate, not a measurement.
 | Starting model | `ibm-nasa-geospatial/Prithvi-EO-2.0-300M-BurnScars`, revision `a3f2c410e45b8ac7417976614528a872f024d831`: a 300-million-parameter geospatial foundation model, already fine-tuned for US burn scars | Apache-2.0 |
 | Training framework | TerraTorch 1.2.14 on PyTorch 2.14.1 and Lightning 2.6.6 | open source |
 | Labels | NBAC (National Burned Area Composite) fire perimeters, release 20260513, fires 2017–2025 | Open Government Licence – Canada |
-| Imagery | Sentinel-2 Level-2A surface reflectance, six bands matching Prithvi's inputs, from the Earth Search catalogue | Copernicus Sentinel data `[verify: attribution wording]` |
+| Imagery | Sentinel-2 Level-2A surface reflectance, six bands matching Prithvi's inputs, from the Earth Search catalogue | Copernicus Sentinel data, free and open. Attribution: "Contains modified Copernicus Sentinel data 2017–2026" (wording from the Sentinel Data Legal Notice; years from the scenes of the 1,024 chips, checked in gate ML7) |
 | Compute | Google Colab, NVIDIA L4 GPU (23 GB), driven from a laptop with the Colab CLI | |
 | Tracking | MLflow 2.15 server: metrics live during training; the final model uploaded and registered afterwards | |
 

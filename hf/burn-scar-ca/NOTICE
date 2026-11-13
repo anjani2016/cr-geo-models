@@ -1,0 +1,18 @@
+burn-scar-ca v1
+Copyright 2026 Alpha Centauri Ventures Inc. (Centauri Research)
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This model is a modified version of Prithvi-EO-2.0-300M-BurnScars
+(https://huggingface.co/ibm-nasa-geospatial/Prithvi-EO-2.0-300M-BurnScars,
+revision a3f2c410e45b8ac7417976614528a872f024d831), licensed under the Apache License, Version 2.0.
+Modification: all weights were fine-tuned on Canadian wildfire chips (described in README.md).
+
+Training labels: National Burned Area Composite (NBAC), release 20260513.
+Canadian Forest Service. National Burned Area Composite (NBAC). Natural Resources Canada, Canadian Forest Service,
+Northern Forestry Centre, Edmonton, Alberta. https://cwfis.cfs.nrcan.gc.ca
+Contains information licensed under the Open Government Licence – Canada
+(https://open.canada.ca/en/open-government-licence-canada).
+
+Training imagery: Sentinel-2 Level-2A.
+Contains modified Copernicus Sentinel data 2017–2026.
