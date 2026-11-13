@@ -133,7 +133,7 @@ def configs():
                                  tags=run_tags(state["record"], {"role": "baseline", "normalisation": "base model", "data": data_tag})),
                WORK / "baseline.yaml")
     means, stds = (state["stats"]["means"], state["stats"]["stds"]) if full["normalisation"] == "training_chips" else (bi["means"], bi["stds"])
-    write_yaml(terratorch_config(base, data, means, stds, dict(common, run_name="finetune-burnscars-ca-v0", output_dir=str(WORK / "out_ft")),
+    write_yaml(terratorch_config(base, data, means, stds, dict(common, run_name=os.environ.get("ML3C_RUN_NAME", "finetune-burnscars-ca-v0"), output_dir=str(WORK / "out_ft")),
                                  tags=run_tags(state["record"], {"role": "finetune", "normalisation": full["normalisation"], "data": data_tag,
                                                                  "max_units": full["max_units"], "lr": full["lr"]})),
                WORK / "finetune.yaml")
@@ -167,7 +167,7 @@ def finetune():
     from lightning.pytorch.loggers import MLFlowLogger
     from terratorch.cli_tools import LightningInferenceModel
 
-    from ml.fire.callbacks import PredictionImages, RunTags
+    from ml.fire.callbacks import BestWeightsExport, PredictionImages, RunTags
     from ml.fire.full_run import lightning_max_time, max_train_hours
 
     full = state["full"]
@@ -198,7 +198,8 @@ def finetune():
         log_every_n_steps=10, enable_progress_bar=False, default_root_dir=str(WORK / "out_ft"),
         callbacks=[ckpt_cb, EarlyStopping(monitor="val/loss", patience=full["early_stopping_patience"]),
                    LearningRateMonitor(logging_interval="epoch"), RunTags(json.dumps(_tags(cfg))),
-                   PredictionImages(n_images=full.get("prediction_images", 4), out_dir=str(WORK / "out_ft/predictions"))],
+                   PredictionImages(n_images=full.get("prediction_images", 4), out_dir=str(WORK / "out_ft/predictions")),
+                   BestWeightsExport(str(WORK / "out_ft/best_weights_fp16.pt"))],
     )
     trainer.fit(model, datamodule=dm)
     state["trainer"], state["model"], state["dm"] = trainer, model, dm
@@ -215,7 +216,8 @@ def test_best():
 
 if step("record", record) and step("preflight", preflight) and step("nbac", nbac) and step("stage", stage) \
         and step("stats", stats) and step("configs", configs):
-    step("baseline", baseline)
+    if os.environ.get("ML3C_SKIP_BASELINE") != "1":
+        step("baseline", baseline)
     if step("finetune", finetune):
         step("test_best", test_best)
 summary["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")

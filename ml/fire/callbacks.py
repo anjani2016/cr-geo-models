@@ -98,6 +98,41 @@ class RunTags(Callback):  # type: ignore[misc,valid-type]
         self._apply(trainer)
 
 
+class BestWeightsExport(Callback):  # type: ignore[misc,valid-type]
+    """When the monitored checkpoint improves, write the model weights (fp16, no optimizer state) to `path` atomically,
+    plus a small JSON note. Lets the Mac pull a usable best model while training runs: the first ML3c run on Colab was
+    ended by the runtime after epoch 14 and its checkpoints were lost (2026-11-13)."""
+
+    def __init__(self, path: str, monitor: str = "val/loss"):
+        super().__init__()
+        self.path, self.monitor, self.best = Path(path), monitor, None
+
+    def on_validation_end(self, trainer, pl_module):
+        if trainer.sanity_checking:
+            return
+        value = trainer.callback_metrics.get(self.monitor)
+        if value is None:
+            return
+        value = float(value)
+        if self.best is not None and value >= self.best:
+            return
+        self.best = value
+        try:
+            import json
+
+            import torch
+
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            state = {k: v.half() if v.is_floating_point() else v for k, v in pl_module.state_dict().items()}
+            tmp = self.path.with_suffix(".tmp")
+            torch.save(state, tmp)
+            tmp.replace(self.path)
+            note = {"epoch": trainer.current_epoch, self.monitor: value, "dtype": "float16", "format": "torch state_dict of the task"}
+            self.path.with_suffix(".json").write_text(json.dumps(note))
+        except Exception as exc:
+            print(f"[BestWeightsExport] skipped: {type(exc).__name__}: {exc}", flush=True)
+
+
 class PredictionImages(Callback):  # type: ignore[misc,valid-type]
     """Logs `n_images` rendered validation chips to MLflow each `every_n_epochs` epochs. Never stops training:
     a failure to render or upload is printed and skipped."""
