@@ -38,7 +38,8 @@ This repo is **public**. Everything committed here can be read by anyone.
 
 ## Claims
 - Quote only numbers produced by a command or run, and name the command or MLflow run. Unverified facts get a visible `[verify: …]`.
-- Model outputs are **Modeled** (e.g. "satellite-derived burn severity, model estimate"). Never "verified", "validated", "proven", "real-time",
+- Four data tiers, as in the lake twin (AGENTS.md there, Gate SAT-F0a): `Sensor (Live)`, `Observed (Field Sample)`, `Satellite (Uncalibrated proxy)` for spectral indices computed from imagery, and `Modeled (Simulation)` for anything a model or regression derives from them.
+- Model outputs are **`Modeled (Simulation)`** (e.g. "satellite-derived burn severity, model estimate"). Never "verified", "validated", "proven", "real-time",
   "live" or "ground truth" without code or the owner backing it.
 - Report the baseline next to every result. If a fine-tune doesn't beat its baseline, say so.
 - Say "assumed" wherever a distribution or fit is assumed.
