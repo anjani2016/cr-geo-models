@@ -2,7 +2,7 @@
 
 - **Repo / branch:** `cr-geo-models`, `feat/ml3b-mlflow-tracking` (from `main` `3fabe25`)
 - **Commit SHA:** pending
-- **Status:** built and self-reviewed. The live check waits for the owner's training user.
+- **Status:** built, self-reviewed, live check passed 2026-11-12 23:51. Owner sign-off pending.
 - **Owner direction (2026-11-12), verbatim:**
   - "i would like to plug mlflow for model training"
   - Monitoring: "Near-live on your Mac (Recommended)"
@@ -54,10 +54,25 @@
 | A failing upload inside the image callback | Caught and printed; training continues | By design. Not testable on CPU, because there is no lightning here |
 | Does MLflow 3.18 read `~/.mlflow/credentials` itself? | `[verify]` | Removed the dependency: `preflight` exports the file into env vars for this process and its children |
 
+## Live check (Colab L4, 2026-11-12 23:42–23:51 EST, 0.22 units by `colab usage`)
+- **Login:** owner's existing MLflow login in `~/.mlflow/credentials` (mode 600). Checked from the Mac first by printing only line types and status codes:
+  `/version` → 200 `2.15.0`; experiment `cr-geo-models-fire` → id 1, active, `artifact_location gs://centauri-mlflow-data/artifacts/1`.
+- **Artifacts:** the experiment writes artifacts straight to a GCS bucket that Colab can't write to.
+  Owner's decision, verbatim: "Metrics live; artifacts later (Recommended)". Images and checkpoints stay on the VM; the 100 MB probe was dropped.
+- **First run** (code `d5cbd34`):
+  - record, preflight (`credentials_source: credentials-file`, client mlflow 3.18.0), configs and **baseline** all OK.
+    The baseline run went to the server with 12 metrics and 9 `cr.*` tags: burn-scar IoU 0.584, mIoU 0.708, matching the smoke test.
+  - **Fine-tune failed:** `TypeError: bad argument type` in `RunTag.to_proto`. Tag values like "42" passed through the TerraTorch config parser came back as numbers.
+- **Fix** (`082b01f`): tags now travel as one JSON string through a `RunTags` callback. A test checks that numeric-looking values survive a YAML round trip as text.
+- **Rerun:** `ml3b-check-finetune-1epoch` FINISHED on the server with 24 metrics and 9 tags.
+  - 4 prediction images were written to `out_ft/predictions/epoch_000/` on the VM.
+  - The best checkpoint was `epoch=0-step=6.ckpt`.
+  - Sample image: `ml3b_prediction_image_epoch000_val00.png` (false colour | NBAC yellow | prediction cyan; grey = ignore, here an earlier-year scar).
+- **Cleanup:** credentials removed from the VM ("credentials removed"), session stopped, `colab sessions`: none.
+- **Client/server versions:** client 3.18 with server 2.15 worked for runs, metrics and tags. Artifacts and the model registry were not exercised.
+
 ## Known limits
-- **The live check hasn't run yet.** It needs the owner's training user and `~/.mlflow/credentials` on the Mac. That file did not exist at 2026-11-12 23:2x (`ls`).
-- **Large uploads:** the server may run on Cloud Run, which caps request size `[verify]`, so 1.3 GB checkpoint uploads may fail. The 100 MB probe answers this first.
-- The probe run is soft-deleted; its artifact stays until `mlflow gc` on the server.
+- **Artifacts and Model Registry:** blocked until the server proxies artifacts (`--serve-artifacts`) or Colab gets bucket access. A follow-up infra gate is logged in `~/dev/TASKS.md`. Cloud Run's request-size limit `[verify]` matters for proxied 1.3 GB checkpoints.
 - MLflow 3.13 in another project's environment on the Mac can't open the 3.18 smoke database (schema `f4a9b2c7d1e6` vs `da6fb0208061`). With the hosted server, the browser UI replaces any local viewer.
 
 ## Reviewer Verdict & Owner Sign-Off Date
