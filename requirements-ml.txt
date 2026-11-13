@@ -1,0 +1,13 @@
+# Training on a Colab GPU runtime (gate ML3). Install with: colab install -s <session> -r requirements-ml.txt
+# Pinned from the resolved install on a Colab L4 runtime, 2026-11-12 (full `pip freeze` in docs/colab_env/2026-11-12_l4_terratorch_pip_freeze.txt).
+# torch/torchvision are Colab's preinstalled CUDA builds and are not pinned here, so pip does not replace them:
+# resolved there as torch==2.14.1+cu130, torchvision==0.29.1+cu130, Python 3.13.16.
+terratorch==1.2.14
+mlflow==3.18.0
+lightning==2.6.6
+segmentation_models_pytorch==0.6.0
+timm==1.0.31
+albumentations==2.0.8
+rasterio==1.5.2
+huggingface_hub==1.33.0
+jsonargparse==4.53.0
