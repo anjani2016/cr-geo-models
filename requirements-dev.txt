@@ -1,8 +1,17 @@
-# CPU test dependencies only (pinned from a clean Python 3.12 venv, 2026-11-12, `pip freeze`).
-# Training dependencies go in requirements-ml.txt, pinned from a resolved Colab install.
-pytest==9.2.0
-PyYAML==6.0.3
+# CPU test dependencies (pinned from a clean Python 3.12 venv, 2026-11-12, `pip freeze`).
+# Staging-only extras: requirements-stage.txt. Training (Colab GPU): requirements-ml.txt, added in ML3.
+affine==3.0.1
+attrs==26.1.0
+certifi==2026.10.23
+click==8.5.1
 iniconfig==2.3.1
+numpy==2.5.4
 packaging==26.3
 pluggy==1.7.0
 Pygments==2.21.0
+pyparsing==3.3.3
+pyproj==3.8.0
+pytest==9.2.0
+PyYAML==6.0.3
+rasterio==1.5.2
+shapely==2.2.0

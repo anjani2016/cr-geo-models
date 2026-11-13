@@ -5,3 +5,4 @@ What each gate ID stands for. Status lives in each gate record. The plan is in t
 | Gate ID | Stands for | Branch | Record |
 | --- | --- | --- | --- |
 | ML-R | Repository scaffold | `main` (first commit) | [record](gates/gate_ml_r_scaffold.md) |
+| ML1 | Wildfire data staging (NBAC + Sentinel-2 L2A chips) | `feat/ml1-fire-data-staging` | [record](gates/gate_ml1_fire_data_staging.md) |

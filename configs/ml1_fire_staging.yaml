@@ -1,0 +1,49 @@
+# Gate ML1: wildfire chip staging (NBAC perimeters + Sentinel-2 L2A). Plan: docs/plans/ml1_fire_data_staging.md
+# Values marked "gate choice" were chosen for this gate and are not from a source; change them here, not in code.
+
+model_bands:  # base model order, from burn_scars_config.yaml at revision a3f2c410e45b8ac7417976614528a872f024d831
+  - {model: BLUE, asset: blue}
+  - {model: GREEN, asset: green}
+  - {model: RED, asset: red}
+  - {model: NIR_NARROW, asset: nir08}
+  - {model: SWIR_1, asset: swir16}
+  - {model: SWIR_2, asset: swir22}
+
+selection:
+  fields:  # NBAC attribute names [verify against the downloaded file; a dry run fails closed if any is missing]
+    fire_id: NFIREID
+    year: YEAR
+    area_ha: POLY_HA
+    start: AG_SDATE
+    end: AG_EDATE
+  years: [2019, 2020, 2021, 2022, 2023, 2024]  # gate choice; Sentinel-2 L2A coverage of these years on Earth Search [verify]
+  min_area_ha: 500        # gate choice
+  prior_years_ignore: 3   # gate choice: scars from the 3 years before are labelled ignore (-1)
+  val_fraction: 0.15      # gate choice
+  regions:                # gate choice: lon/lat boxes; first match wins
+    manitoba_boreal: [-102.0, 50.0, -95.2, 60.0]
+    ontario_far_north: [-95.2, 50.0, -79.5, 57.0]
+    ontario_boreal_south: [-95.2, 46.0, -79.5, 50.0]
+    quebec_boreal: [-79.5, 46.0, -64.0, 53.0]
+  test_regions: [quebec_boreal]  # gate choice: held out entirely
+
+imagery:
+  stac_url: https://earth-search.aws.element84.com/v1
+  collection: sentinel-2-l2a
+  scl_asset: scl
+  invalid_scl_classes: [0, 1, 3, 8, 9, 10, 11]  # no data, saturated, cloud shadow, cloud medium/high, cirrus, snow [verify: ESA SCL table]
+  days_after_fire: 45      # gate choice
+  fallback_start: "09-01"  # gate choice: window start (month-day of the fire year) when NBAC has no end date
+  max_cloud: 20            # gate choice: percent, scene-level eo:cloud_cover
+
+chips:
+  chip_px: 512            # base model chip size
+  res_m: 30               # HLS resolution the base model was trained on
+  max_chips_per_fire: 16  # gate choice: larger fires are refused, not trimmed
+
+source:  # goes into the data manifest
+  dataset: "Canadian burn-scar chips (NBAC perimeters on Sentinel-2 L2A)"
+  source_url: "https://cwfis.cfs.nrcan.gc.ca/downloads/nbac/ ; https://earth-search.aws.element84.com/v1 (sentinel-2-l2a)"
+  licence: "Labels: Open Government Licence - Canada (NBAC). Imagery: Copernicus Sentinel data terms [verify exact wording]"
+  attribution: "Canadian Forest Service. National Burned Area Composite (NBAC). Natural Resources Canada, Canadian Forest Service, Northern Forestry Centre, Edmonton, Alberta. https://cwfis.cfs.nrcan.gc.ca. Contains modified Copernicus Sentinel data [verify year range and wording]."
+  retrieved_on: "pending"  # set to the staging run date
