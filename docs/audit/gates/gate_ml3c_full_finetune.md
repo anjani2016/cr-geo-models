@@ -59,6 +59,17 @@ Both full-run runtimes vanished from `colab sessions` while training, with no er
 The cause is unknown `[verify: Colab's runtime limits for CLI-created sessions; whether a browser-attached session (`colab url`) or the Pro+ background-execution setting lasts longer]`.
 Until that's known, long runs need the best-weights export and pull built here, or must be split into sessions under ~50 minutes.
 
+
+## Addendum 2026-11-13: registered on the MLflow server (owner, verbatim: "Yes, register it")
+- **Files:** a model folder was built on the Mac (`data/ml3c_r2/model_v1/`, git-ignored) with the weights, `best_weights_fp16.json`, `norm_stats.json`,
+  configs (`ml3_burn_scar.yaml`, `ml1_fire_staging.yaml` and the vendored base config, as of `e16dfe8`), and a README with test scores, limits and attribution.
+- **Upload:** with an MLflow 2.15.1 client (matching the server; scratch venv, `setuptools<81` for `pkg_resources`) and the Mac's Google application-default
+  credentials, attached to the test run `25cc3f6a…` as `model/`. It took 38.9 s. The uploaded weights match the local file: MD5 equal, 648,942,995 bytes.
+- **Registered model** `burn-scar-ca` (created), **version 1**, status READY.
+  - Source: `gs://centauri-mlflow-data/artifacts/1/25cc3f6a6fad4833b2652f28619f59d5/artifacts/model`.
+  - Tags: test and baseline scores, test split, weights note, commit, source run, caveat.
+- **Not done:** publishing on Hugging Face or Zenodo (ML7). The Copernicus attribution wording in the README is still `[verify]`.
+
 ## Checks
 - `.venv/bin/pytest -q` (clean venv from `requirements-dev.txt`): **246 passed**.
 
