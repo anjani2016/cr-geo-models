@@ -48,7 +48,7 @@ This repo is **public**. Everything committed here can be read by anyone.
 - Run a claims check on every model card, dataset card, README and report before publishing.
 
 ## Publishing (outward-facing; the owner confirms each one)
-- Hugging Face organisation: `centauri-research2019`. The owner creates repos and holds the write token.
+- Hugging Face account: `anjanid` (owner, 2026-11-13: "anjanid account"; `centauri-research2019` is a separate user account, not an organisation). The owner creates repos and holds the write token.
 - Zenodo: archives tagged GitHub releases; DOIs are linked to the owner's ORCID.
 - Code licence: Apache-2.0. Model weights take the most restrictive licence among the base model and the training data. Check before publishing.
 

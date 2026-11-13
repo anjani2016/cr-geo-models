@@ -2,13 +2,13 @@
 
 Open-weight geospatial models from Centauri Research, trained on public data and published on Hugging Face with their code, configs and evaluation.
 
-**Status:** setup only. No model has been trained or published yet.
+**Status:** one model trained (Canadian burned area, `burn-scar-ca` v1), not yet published. Progress and next steps: [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Planned models
 
 | Model | Task | Base model | Status |
 |---|---|---|---|
-| Canadian burn severity | Segment burned area and severity classes from satellite imagery | Prithvi-EO-2.0-300M BurnScars (Apache-2.0) | Planned |
+| Canadian burn severity | Segment burned area and severity classes from satellite imagery | Prithvi-EO-2.0-300M BurnScars (Apache-2.0) | Burned area trained (held-out burn-scar IoU 0.873); severity classes planned; not yet published |
 | Lake chlorophyll-a | Estimate chlorophyll-a from Sentinel-2 reflectance | Gradient-boosting baseline and a mixture density network | Planned |
 
 All outputs are model estimates (Modeled), not measurements. Each model card states its training data, held-out test regions, metrics against a
