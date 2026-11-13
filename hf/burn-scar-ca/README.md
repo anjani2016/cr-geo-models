@@ -114,7 +114,7 @@ This model:
   title     = {burn-scar-ca v1: burned-area segmentation for Canadian wildfires in Sentinel-2 imagery},
   publisher = {Alpha Centauri Ventures Inc. (Centauri Research)},
   year      = {2026},
-  url       = {https://huggingface.co/centauri-research2019/burn-scar-ca}
+  url       = {https://huggingface.co/anjanid/burn-scar-ca}
 }
 ```
 A DOI for the code release is added here once it is archived on Zenodo.

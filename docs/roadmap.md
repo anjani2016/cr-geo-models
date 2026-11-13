@@ -33,7 +33,7 @@ Mapping lakes after fires is separate work in another repo and is not part of th
    are on the owner's machine at `data/ml3c_r2/model_v1/` (git-ignored); check the SHA-256 before upload.
 3. **Checks before publishing:** Copernicus Sentinel attribution wording (confirmed in ML7: 2017–2026); NBAC (OGL-Canada) attribution text; Prithvi (Apache-2.0) notice and
    base-model citation; a claims sweep of the card (no "verified", "real-time" or partner names); licence for the fine-tuned weights (Apache-2.0 proposed, owner decides).
-4. **Publishing (owner does or confirms each step):** owner creates the Hugging Face model repo under `centauri-research2019` and a write token;
+4. **Publishing (owner does or confirms each step):** owner creates the Hugging Face model repo `anjanid/burn-scar-ca` (owner's account) and a write token;
    upload; tag a code release on GitHub; Zenodo archives the release and gives a DOI; owner adds the DOI to ORCID.
 5. **LinkedIn post draft** from the training report, with the limits kept in. Draft only; the owner posts.
 

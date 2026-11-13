@@ -11,6 +11,7 @@
   - LinkedIn draft: "keep it out of the public repo"
   - "go ahead with my confirmed decisions"
   - ORCID: "https://orcid.org/0009-0003-8789-4851"
+  - Account: "anjanid account". `hf auth whoami` showed the CLI logged in as `anjanid` (organisations: `AIFoundry-hackathon` only); the public page of `centauri-research2019` is a user account titled with the owner's name, not an organisation. Model repo is now `anjanid/burn-scar-ca`; card citation URL, AGENTS.md, plan, roadmap and report updated
 - **Roles:** Implementer and reviewer: Claude Code (self-review per `AGENTS.md`). Route: Claude Code coded it, because the change is small (documents, one staging module, two scripts, one test file).
 - **Plan:** `docs/plans/ml7_publish.md`.
 
@@ -71,8 +72,17 @@ from the committed files before upload.
   "found through the Earth Search STAC API, hosted on AWS"; "1 − 0.849" derivation shown; conversion output recorded here. Not changed: the Files table
   (lists the staged upload, confirmed above).
 
+## Hugging Face upload (2026-11-13)
+- **Repo:** owner ran `hf repos create burn-scar-ca --type model --private` → `anjanid/burn-scar-ca`, private (`hf models info`: `"private": true`).
+- **Upload:** owner ran `hf upload anjanid/burn-scar-ca <scratch>/hf_upload . --repo-type model --commit-message "burn-scar-ca v1 (cr-geo-models <commit>)"`
+  → Hub commit `1508dc788a4c06c48bf565dfe2c8242fe6cc0cf4`. The commit message kept the literal placeholder `<commit>`; Hub commit messages can't be edited.
+- **Source:** the folder was staged from the working tree with the account-switch edits, before they were committed. Those edits are committed in the commit after `b2852b7`.
+- **Check:** files downloaded at that Hub revision (`hf download --exclude "*.safetensors"`) pass `shasum -a 256 -c` for all 8 small files, and `SHA256SUMS` is identical to the staged copy.
+  The weights' LFS SHA-256 on the Hub (`HfApi.model_info(files_metadata=True)`) is `ffd8e9c692b20202674431df8805e2e104a4d632be582b193fea054a5120425a`, 648,861,492 bytes, equal to the conversion output.
+  The Hub repo holds 11 files: the 10 staged plus its own `.gitattributes`.
+
 ## Not done (each needs the owner's word)
-Commit; create the Hugging Face repo and log in (owner); upload; merge and push (owner); enable Zenodo for the repo (owner); tag `v0.1.0` and release (owner);
+Make the Hugging Face repo public (after the owner checks the card on the Hub); merge and push (owner); enable Zenodo for the repo (owner); tag `v0.1.0` and release (owner);
 add the DOI to the card, `CITATION.cff` and README; ORCID link (owner); LinkedIn post (owner).
 
 ## Reviewer Verdict & Owner Sign-Off Date

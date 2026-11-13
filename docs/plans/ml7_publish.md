@@ -10,6 +10,7 @@ which the owner links to their ORCID. Then draft a LinkedIn post. Source: `docs/
 - Release `v0.1.0` and model repo `centauri-research2019/burn-scar-ca`, made public once the card has no `[verify]` left: "ok"
 - LinkedIn draft: "keep it out of the public repo"
 - Go-ahead: "go ahead with my confirmed decisions"
+- Account, after `centauri-research2019` turned out to be a separate user account (not an organisation) and the CLI was logged in as `anjanid`: "anjanid account". Model repo: `anjanid/burn-scar-ca`
 
 ## Route
 Claude Code codes this gate. The changes are small: documents, one staging script, one conversion script and their tests. Per AGENTS.md (owner, 2026-11-12),
@@ -32,7 +33,7 @@ The sources and wording are recorded in the gate record. Anything not confirmed 
 
 ## Publishing steps (each needs the owner's word)
 1. Change commit, then gate-record commit.
-2. Owner creates `centauri-research2019/burn-scar-ca` and logs in with `hf auth login` in their own terminal.
+2. Owner creates `anjanid/burn-scar-ca` and logs in with `hf auth login` in their own terminal.
 3. Upload from the staged folder only.
 4. Owner merges to `main` and pushes.
 5. Owner enables this repo in Zenodo's GitHub settings (before the release).

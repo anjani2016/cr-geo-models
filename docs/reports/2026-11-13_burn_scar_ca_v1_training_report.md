@@ -70,7 +70,7 @@ including both killed runs.
 ## 8. What's registered and what gets published
 - **Registered:** `burn-scar-ca` version 1 on the project's MLflow server. It holds the epoch-10 weights (fp16, 648,942,995 bytes, SHA-256 starting
   `b471b653`), the normalisation statistics, the configs and a README.
-- **To publish (ML7):** the same weights and files on Hugging Face (`centauri-research2019`), plus a Zenodo DOI for the tagged code release, linked to ORCID.
+- **To publish (ML7):** the same weights and files on Hugging Face (`anjanid/burn-scar-ca`), plus a Zenodo DOI for the tagged code release, linked to ORCID.
 
 ## 9. Lessons (useful for a post)
 1. **Start from a foundation model, then localise.** A US-trained model transferred poorly to Canadian boreal fires; ten epochs on Canadian labels fixed most of it.
