@@ -79,9 +79,13 @@ class PredictionImages(Callback):  # type: ignore[misc,valid-type]
     """Logs `n_images` rendered validation chips to MLflow each `every_n_epochs` epochs. Never stops training:
     a failure to render or upload is printed and skipped."""
 
-    def __init__(self, n_images: int = 4, every_n_epochs: int = 1):
+    def __init__(self, n_images: int = 4, every_n_epochs: int = 1, out_dir: str | None = None, log_to_mlflow: bool = False):
+        """out_dir: save PNGs there (downloaded after the run). log_to_mlflow: also log them as run artifacts. The owner's
+        server stores artifacts directly in a GCS bucket, which Colab can't write to yet (owner, 2026-11-12: metrics live,
+        artifacts later), so the default is local files only."""
         super().__init__()
         self.n_images, self.every_n_epochs = int(n_images), int(every_n_epochs)
+        self.out_dir, self.log_to_mlflow = out_dir, bool(log_to_mlflow)
         self._batch = None
 
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
@@ -103,8 +107,11 @@ class PredictionImages(Callback):  # type: ignore[misc,valid-type]
             masks = batch["mask"].cpu().numpy()
             logger = trainer.logger
             with tempfile.TemporaryDirectory() as tmp:
+                target = Path(self.out_dir) / f"epoch_{epoch:03d}" if self.out_dir else Path(tmp)
+                target.mkdir(parents=True, exist_ok=True)
                 for i in range(min(self.n_images, images.shape[0])):
-                    png = write_png(render_comparison(images[i], masks[i], preds[i]), Path(tmp) / f"val_{i:02d}.png")
-                    logger.experiment.log_artifact(logger.run_id, str(png), artifact_path=f"predictions/epoch_{epoch:03d}")
+                    png = write_png(render_comparison(images[i], masks[i], preds[i]), target / f"val_{i:02d}.png")
+                    if self.log_to_mlflow:
+                        logger.experiment.log_artifact(logger.run_id, str(png), artifact_path=f"predictions/epoch_{epoch:03d}")
         except Exception as exc:  # never kill a long GPU run over a picture
             print(f"[PredictionImages] skipped epoch {epoch}: {type(exc).__name__}: {exc}", flush=True)

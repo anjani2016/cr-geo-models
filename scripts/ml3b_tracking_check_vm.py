@@ -1,10 +1,10 @@
 """Gate ML3b live check. Runs ON the Colab VM (same layout as the ML3 smoke test: /content/work/repo, /content/work/subset).
 
 1. Preflight: credentials present (file mode 600), HTTPS, the MLflow server accepts them, experiment available.
-2. Artifact probe: a 100 MB throwaway artifact (above Cloud Run's request-size limit [verify]); the run is then deleted
-   (MLflow soft-deletes; the owner can purge with `mlflow gc`).
-3. Baseline run on the server: the untouched US BurnScars checkpoint tested on the subset, with the reproducibility tags.
-4. One-epoch fine-tune on the subset with prediction images and the best checkpoint logged as an artifact (~1.3 GB).
+2. Baseline run on the server: the untouched US BurnScars checkpoint tested on the subset, with the reproducibility tags.
+3. One-epoch fine-tune on the subset: metrics and tags live on the server; prediction images and the best checkpoint
+   stay on the VM (the experiment's artifacts go straight to gs://centauri-mlflow-data, which Colab can't write to yet;
+   owner 2026-11-12: "Metrics live; artifacts later").
 Writes /content/work/tracking_check.json. Credentials are never printed.
 """
 
@@ -19,7 +19,7 @@ WORK = Path("/content/work")
 REPO = WORK / "repo"
 sys.path.insert(0, str(REPO))
 TRACKING_URI = "https://mlflow.centauri-research.com"
-EXPERIMENT = "burn-scar-ca"
+EXPERIMENT = "cr-geo-models-fire"  # created by the owner on the server (experiment id 1)
 summary = {"started": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "steps": {}}
 
 
@@ -52,12 +52,6 @@ def preflight():
     return pf(TRACKING_URI, EXPERIMENT)
 
 
-def probe():
-    from ml.tracking import artifact_upload_probe
-
-    return artifact_upload_probe(TRACKING_URI, EXPERIMENT, 100, WORK)
-
-
 def configs():
     import yaml
     from huggingface_hub import hf_hub_download
@@ -77,7 +71,7 @@ def configs():
     write_yaml(terratorch_config(base, str(WORK / "subset"), base_init["means"], base_init["stds"], zs,
                                  tags=run_tags(rec, {"role": "baseline", "normalisation": "base model"})), WORK / "baseline.yaml")
     ft = dict(common, run_name="ml3b-check-finetune-1epoch", output_dir=str(WORK / "out_ft"), max_epochs=1,
-              limit_train_batches=6, limit_val_batches=2, log_model=True, save_last=False, save_top_k=1, prediction_images=4)
+              limit_train_batches=6, limit_val_batches=2, log_model=False, save_last=False, save_top_k=1, prediction_images=4)
     write_yaml(terratorch_config(base, str(WORK / "subset"), stats["means"], stats["stds"], ft,
                                  tags=run_tags(rec, {"role": "tracking-check", "normalisation": "training chips"})), WORK / "finetune.yaml")
     return {"checkpoint": ckpt}
@@ -119,14 +113,14 @@ def server_view():
     runs = client.search_runs([exp.experiment_id], max_results=10)
     out = []
     for r in runs:
-        arts = [a.path for a in client.list_artifacts(r.info.run_id)]
         out.append({"run_name": r.info.run_name, "status": r.info.status, "n_metrics": len(r.data.metrics),
-                    "tags": {k: v for k, v in r.data.tags.items() if k.startswith("cr.")}, "artifacts": arts})
-    return out
+                    "tags": {k: v for k, v in r.data.tags.items() if k.startswith("cr.")}})
+    images = sorted(str(p.relative_to(WORK)) for p in (WORK / "out_ft" / "predictions").rglob("*.png"))
+    ckpts = sorted(p.name for p in (WORK / "out_ft" / "checkpoints").glob("*.ckpt"))
+    return {"runs": out, "local_images": images, "local_checkpoints": ckpts}
 
 
 if step("record", record) and step("preflight", preflight):
-    step("probe_100mb", probe)
     if step("configs", configs):
         step("baseline", baseline)
         step("finetune", finetune)

@@ -156,7 +156,9 @@ def terratorch_config(
     if isinstance(n_images, bool) or not isinstance(n_images, int) or n_images < 0:
         raise TrainPrepError("training.prediction_images must be a non-negative integer")
     if n_images:
-        callbacks.append({"class_path": "ml.fire.callbacks.PredictionImages", "init_args": {"n_images": n_images}})
+        callbacks.append({"class_path": "ml.fire.callbacks.PredictionImages", "init_args": {
+            "n_images": n_images, "out_dir": f"{training['output_dir'].rstrip('/')}/predictions",
+            "log_to_mlflow": bool(training.get("images_to_mlflow", False))}})
     trainer["callbacks"] = callbacks
     cfg["seed_everything"] = int(training.get("seed", cfg.get("seed_everything", 0)))
     return cfg
