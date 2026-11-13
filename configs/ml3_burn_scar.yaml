@@ -23,6 +23,6 @@ training:
   limit_val_batches: 2
   precision: bf16-mixed     # as in the base config
   experiment_name: ml3-smoke
-  tracking_uri: file:/content/work/mlruns
+  tracking_uri: sqlite:////content/work/mlflow.db   # MLflow 3.18 refuses the plain-file store (maintenance mode)
   output_dir: /content/work/out
   run_name: finetune-smoke

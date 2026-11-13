@@ -27,8 +27,9 @@ class TrainPrepError(ValueError):
 def chip_pairs(split_dir: str | Path) -> list[tuple[Path, Path]]:
     """(image, label) pairs in one split folder, sorted. Fails closed on an image without its label or the reverse."""
     split_dir = Path(split_dir)
-    images = {p.name[: -len(IMG_SUFFIX)]: p for p in split_dir.glob(f"*{IMG_SUFFIX}")}
-    labels = {p.name[: -len(LABEL_SUFFIX)]: p for p in split_dir.glob(f"*{LABEL_SUFFIX}")}
+    # Skip macOS AppleDouble files ("._name"), which tar on macOS adds unless COPYFILE_DISABLE=1 (ML3 smoke test, 2026-11-12).
+    images = {p.name[: -len(IMG_SUFFIX)]: p for p in split_dir.glob(f"*{IMG_SUFFIX}") if not p.name.startswith("._")}
+    labels = {p.name[: -len(LABEL_SUFFIX)]: p for p in split_dir.glob(f"*{LABEL_SUFFIX}") if not p.name.startswith("._")}
     if images.keys() != labels.keys():
         raise TrainPrepError(f"{split_dir}: unmatched chips {sorted(images.keys() ^ labels.keys())[:5]}")
     return [(images[k], labels[k]) for k in sorted(images)]

@@ -118,3 +118,12 @@ def test_shipped_run_config_is_pinned_and_loads():
     cfg = load_config(ROOT / "configs/ml3_burn_scar.yaml")
     assert cfg["base_model"]["revision"] == "a3f2c410e45b8ac7417976614528a872f024d831"
     assert cfg["smoke"]["max_units"] == 10
+
+
+def test_macos_appledouble_files_are_ignored(tmp_path):
+    _chip(tmp_path / "train", "2021-1_00", 0.1)
+    _chip(tmp_path / "train", "2021-2_00", 0.3)
+    (tmp_path / "train" / "._2021-1_00_img.tif").write_bytes(b"\x00\x05\x16\x07junk")
+    (tmp_path / "train" / "._2021-1_00_label.tif").write_bytes(b"\x00\x05\x16\x07junk")
+    assert [p[0].name for p in chip_pairs(tmp_path / "train")] == ["2021-1_00_img.tif", "2021-2_00_img.tif"]
+    assert band_stats(tmp_path / "train")["chips"] == 2

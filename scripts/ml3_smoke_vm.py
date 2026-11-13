@@ -1,7 +1,7 @@
 """Gate ML3 smoke test. Runs ON the Colab VM (sent with `colab exec -f`), never locally.
 
 Expects /content/work/repo (git archive of a commit) and /content/work/subset/{train,val,test}.
-Writes /content/work/smoke_summary.json and an MLflow file store at /content/work/mlruns.
+Writes /content/work/smoke_summary.json and an MLflow SQLite store at /content/work/mlflow.db.
 Every step is time-boxed and its error, if any, is recorded rather than hidden.
 """
 
@@ -97,7 +97,7 @@ def finetune_test():
 def mlflow_metrics():
     import mlflow
 
-    mlflow.set_tracking_uri(f"file:{WORK / 'mlruns'}")
+    mlflow.set_tracking_uri(f"sqlite:///{WORK / 'mlflow.db'}")
     runs = mlflow.search_runs(search_all_experiments=True)
     cols = [c for c in runs.columns if c.startswith("metrics.") and ("test" in c or "val" in c)]
     return runs[["run_id", "tags.mlflow.runName"] + cols].to_dict(orient="records") if len(runs) else []
