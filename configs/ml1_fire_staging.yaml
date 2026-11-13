@@ -40,6 +40,7 @@ chips:
   chip_px: 512            # base model chip size
   res_m: 30               # HLS resolution the base model was trained on
   max_chips_per_fire: 16  # gate choice: larger fires are refused, not trimmed
+  min_valid_fraction: 0.5 # gate choice: chips with less than half their pixels usable (not -1) are not written
 
 source:  # goes into the data manifest
   dataset: "Canadian burn-scar chips (NBAC perimeters on Sentinel-2 L2A)"

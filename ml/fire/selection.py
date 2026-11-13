@@ -62,6 +62,16 @@ def _to_date(value: Any) -> Optional[date]:
         raise SelectionError(f"unreadable date {value!r}")
 
 
+def fire_key(year: Any, raw_id: Any) -> str:
+    """'<year>-<id>'. NBAC stores YEAR and NFIREID as decimals (e.g. 2021.0, 2.0), so whole numbers are written as integers."""
+    parts = []
+    for value in (year, raw_id):
+        if isinstance(value, float) and value.is_integer():
+            value = int(value)
+        parts.append(str(value))
+    return "-".join(parts)
+
+
 def stable_fraction(fire_id: str) -> float:
     """A number in [0, 1) fixed by the fire ID (SHA-256), used for the train/val split."""
     digest = hashlib.sha256(fire_id.encode("utf-8")).digest()
@@ -115,7 +125,7 @@ def select_fires(records: Iterable[Mapping[str, Any]], cfg: Mapping[str, Any]) -
         region = next((name for name, box in regions.items() if _in_box(lon, lat, box)), None)
         if region is None:
             continue
-        fire_id = f"{year}-{record[fields['fire_id']]}"
+        fire_id = fire_key(year, record[fields["fire_id"]])
         if fire_id in chosen:
             raise SelectionError(f"duplicate fire ID {fire_id}")
         if region in test_regions:

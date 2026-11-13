@@ -46,7 +46,8 @@ def test_offline_stage_writes_chips_labels_and_a_verifiable_manifest(tmp_path, m
     hrefs["scl"] = str(tmp_path / "scl.tif")
 
     band = {"scale": 0.0001, "offset": -0.1, "nodata": 0}
-    item = {"id": "S2_TEST", "properties": {"datetime": "2023-08-25T16:00:00Z", "eo:cloud_cover": 5},
+    footprint = {"type": "Polygon", "coordinates": [[[-86, 47], [-84, 47], [-84, 49], [-86, 49], [-86, 47]]]}
+    item = {"id": "S2_TEST", "geometry": footprint, "properties": {"datetime": "2023-08-25T16:00:00Z", "eo:cloud_cover": 5, "earthsearch:boa_offset_applied": False},
             "assets": {k: {"href": v, "raster:bands": [band]} for k, v in hrefs.items()}}
 
     class FakeSearch:
@@ -80,7 +81,7 @@ def test_no_clear_scene_is_logged_not_written(tmp_path, monkeypatch):
     rec = {"NFIREID": 7, "YEAR": 2023, "POLY_HA": 4000, "AG_SDATE": None, "AG_EDATE": "2023-08-20", "lon": -85.05, "lat": 48.015}
     fires = select_fires([rec], cfg["selection"])
     plan = plan_chips(fires, {fires[0].fire_id: fire_geom}, cfg, [(2023, fire_geom)])
-    cloudy = {"id": "S2_CLOUDY", "properties": {"datetime": "2023-08-25T16:00:00Z", "eo:cloud_cover": 90}, "assets": {}}
+    cloudy = {"id": "S2_CLOUDY", "geometry": {"type": "Polygon", "coordinates": [[[-86, 47], [-84, 47], [-84, 49], [-86, 49], [-86, 47]]]}, "properties": {"datetime": "2023-08-25T16:00:00Z", "eo:cloud_cover": 90}, "assets": {}}
     fake = types.SimpleNamespace(Client=types.SimpleNamespace(open=lambda url: types.SimpleNamespace(
         search=lambda **kw: types.SimpleNamespace(items=lambda: [types.SimpleNamespace(to_dict=lambda: cloudy)]))))
     monkeypatch.setitem(sys.modules, "pystac_client", fake)
@@ -88,5 +89,22 @@ def test_no_clear_scene_is_logged_not_written(tmp_path, monkeypatch):
     out.mkdir()
     result = stage(plan, cfg, out)
     assert result["manifest"]["files"] == []
-    assert result["log"][0]["status"] == "no clear scene"
+    assert result["log"][0]["status"] == "no clear covering scene"
     assert list(out.iterdir()) == []
+
+
+def test_scene_that_does_not_cover_the_chip_is_not_used(tmp_path, monkeypatch):
+    cfg = load_stage_config(CONFIG)
+    fire_geom = box(-85.06, 48.01, -85.04, 48.02)
+    rec = {"NFIREID": 7, "YEAR": 2023, "POLY_HA": 4000, "AG_SDATE": None, "AG_EDATE": "2023-08-20", "lon": -85.05, "lat": 48.015}
+    fires = select_fires([rec], cfg["selection"])
+    plan = plan_chips(fires, {fires[0].fire_id: fire_geom}, cfg, [(2023, fire_geom)])
+    edge = {"id": "S2_EDGE", "geometry": {"type": "Polygon", "coordinates": [[[-85.05, 47], [-84, 47], [-84, 49], [-85.05, 49], [-85.05, 47]]]},
+            "properties": {"datetime": "2023-08-25T16:00:00Z", "eo:cloud_cover": 0}, "assets": {}}
+    fake = types.SimpleNamespace(Client=types.SimpleNamespace(open=lambda url: types.SimpleNamespace(
+        search=lambda **kw: types.SimpleNamespace(items=lambda: [types.SimpleNamespace(to_dict=lambda: edge)]))))
+    monkeypatch.setitem(sys.modules, "pystac_client", fake)
+    out = tmp_path / "out"
+    out.mkdir()
+    result = stage(plan, cfg, out)
+    assert result["manifest"]["files"] == [] and result["log"][0]["status"] == "no clear covering scene"

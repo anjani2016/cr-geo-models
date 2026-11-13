@@ -19,7 +19,7 @@ import yaml
 
 from ml.fire.chips import ChipError, chip_origins, chip_transform, label_chip, label_summary
 from ml.fire.imagery import band_scaling, choose_scene, invalid_mask, search_window, to_reflectance
-from ml.fire.selection import Fire, select_fires
+from ml.fire.selection import Fire, fire_key, select_fires
 
 REQUIRED_SECTIONS = ("model_bands", "selection", "imagery", "chips", "source")
 
@@ -55,8 +55,47 @@ def _utm_epsg(lon: float, lat: float) -> int:
     return (32600 if lat >= 0 else 32700) + zone
 
 
-def read_nbac(paths: Iterable[str | Path]) -> tuple[list[dict[str, Any]], dict[Any, Any]]:
-    """NBAC records (attributes + lon/lat of a point inside each fire) and their WGS84 geometries, keyed by (file, row)."""
+def merge_split_fires(
+    records: list[dict[str, Any]], geoms: dict[Any, Any], fields: Mapping[str, str]
+) -> tuple[list[dict[str, Any]], dict[Any, Any]]:
+    """NBAC splits a fire that crosses a provincial or park boundary into one row per jurisdiction, sharing YEAR and
+    NFIREID. Merge them: union of shapes, summed area, earliest start, latest end, a new point inside the union."""
+    import shapely
+
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for record in records:
+        groups.setdefault(fire_key(record[fields["year"]], record[fields["fire_id"]]), []).append(record)
+    merged, merged_geoms = [], {}
+    for key, rows in groups.items():
+        if len(rows) == 1:
+            merged.append(rows[0])
+            merged_geoms[rows[0]["_row"]] = geoms[rows[0]["_row"]]
+            continue
+        geom = shapely.union_all([geoms[r["_row"]] for r in rows])
+        point = geom.representative_point()
+        out = dict(rows[0])
+        out[fields["area_ha"]] = sum(float(r[fields["area_ha"]]) for r in rows)
+        for name, pick in (("start", min), ("end", max)):
+            col = fields.get(name)
+            if col:
+                dates = [_plain_date(r.get(col)) for r in rows]
+                dates = [d for d in dates if d is not None]
+                out[col] = pick(dates) if dates else None
+        out.update(lon=point.x, lat=point.y, _merged_rows=len(rows))
+        merged.append(out)
+        merged_geoms[out["_row"]] = geom
+    return merged, merged_geoms
+
+
+def _plain_date(value: Any) -> Any:
+    from ml.fire.selection import _to_date
+
+    return _to_date(value)
+
+
+def read_nbac(paths: Iterable[str | Path], fields: Mapping[str, str]) -> tuple[list[dict[str, Any]], dict[Any, Any]]:
+    """NBAC records (attributes + lon/lat of a point inside each fire) and their WGS84 geometries, keyed by (file, row).
+    Rows of one fire split across jurisdictions are merged (merge_split_fires)."""
     import geopandas as gpd  # staging-only dependency
 
     records, geoms = [], {}
@@ -68,7 +107,7 @@ def read_nbac(paths: Iterable[str | Path]) -> tuple[list[dict[str, Any]], dict[A
             record.update(lon=point.x, lat=point.y, _row=(n, idx))
             records.append(record)
             geoms[(n, idx)] = row.geometry
-    return records, geoms
+    return merge_split_fires(records, geoms, fields)
 
 
 def plan_chips(
@@ -133,8 +172,11 @@ def stage(plans: list[dict[str, Any]], cfg: Mapping[str, Any], out_dir: Path) ->
     """Read imagery for each planned chip, write image and label GeoTIFFs, return the manifest (not yet written)."""
     import numpy as np
     import rasterio
+    import shapely
+    from pyproj import Transformer
     from pystac_client import Client
     from rasterio.enums import Resampling
+    from shapely.geometry import box
 
     from ml.manifest import build_entries
 
@@ -147,15 +189,19 @@ def stage(plans: list[dict[str, Any]], cfg: Mapping[str, Any], out_dir: Path) ->
             log.append({"fire": fire.fire_id, "status": "skipped", "reason": plan["skipped"]})
             continue
         start, end = search_window(fire.end, fire.year, img_cfg["days_after_fire"], img_cfg["fallback_start"])
-        bbox = [fire.lon - 0.5, fire.lat - 0.5, fire.lon + 0.5, fire.lat + 0.5]
+        to_wgs84 = Transformer.from_crs(plan["epsg"], 4326, always_xy=True).transform
+        size = chips["chip_px"] * chips["res_m"]
+        chip_areas = [shapely.transform(box(x, y - size, x + size, y), to_wgs84, interleaved=False) for x, y in plan["origins"]]
+        bbox = list(shapely.union_all(chip_areas).bounds)
         items = [i.to_dict() for i in client.search(collections=[img_cfg["collection"]], bbox=bbox,
                                                     datetime=f"{start.isoformat()}/{end.isoformat()}").items()]
-        scene = choose_scene(items, start, end, img_cfg["max_cloud"])
-        if scene is None:
-            log.append({"fire": fire.fire_id, "status": "no clear scene", "window": [str(start), str(end)]})
-            continue
-        scaling = [band_scaling(scene, b["asset"]) for b in cfg["model_bands"]]
-        for n, origin in enumerate(plan["origins"]):
+        for n, (origin, area) in enumerate(zip(plan["origins"], chip_areas)):
+            # One scene per chip, and only a tile whose footprint covers the whole chip (edge-of-swath tiles can be mostly empty).
+            scene = choose_scene(items, start, end, img_cfg["max_cloud"], must_cover=area)
+            if scene is None:
+                log.append({"fire": fire.fire_id, "chip": n, "status": "no clear covering scene", "window": [str(start), str(end)]})
+                continue
+            scaling = [band_scaling(scene, b["asset"]) for b in cfg["model_bands"]]
             transform = chip_transform(origin, chips["res_m"])
             dn = [_read_band(scene["assets"][b["asset"]]["href"], plan["epsg"], transform, chips["chip_px"], Resampling.bilinear)
                   for b in cfg["model_bands"]]
@@ -163,6 +209,11 @@ def stage(plans: list[dict[str, Any]], cfg: Mapping[str, Any], out_dir: Path) ->
             scl = _read_band(scene["assets"][img_cfg["scl_asset"]]["href"], plan["epsg"], transform, chips["chip_px"], Resampling.nearest)
             invalid = invalid_mask(scl.astype("int16"), img_cfg["invalid_scl_classes"], bands)
             label = label_chip(plan["burned"], transform, chips["chip_px"], invalid, ignore=plan["ignore"])
+            valid_fraction = float((label != -1).mean())
+            if valid_fraction < chips.get("min_valid_fraction", 0.0):
+                log.append({"fire": fire.fire_id, "chip": n, "scene": scene["id"], "status": "too few valid pixels",
+                            "valid_fraction": round(valid_fraction, 3)})
+                continue
             stem = f"{fire.split}/{fire.fire_id}_{n:02d}"
             for suffix, array, dtype in (("img", np.nan_to_num(bands, nan=0.0), "float32"), ("label", label[None], "int16")):
                 path = out_dir / f"{stem}_{suffix}.tif"
@@ -188,10 +239,10 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     cfg = load_stage_config(args.config)
-    records, geoms = read_nbac(args.nbac)
+    records, geoms = read_nbac(args.nbac, cfg["selection"]["fields"])
     fires = select_fires(records, cfg["selection"])
     fields = cfg["selection"]["fields"]
-    row_of = {f"{r[fields['year']]}-{r[fields['fire_id']]}": r["_row"] for r in records}
+    row_of = {fire_key(r[fields["year"]], r[fields["fire_id"]]): r["_row"] for r in records}
     if args.limit:
         fires = fires[: args.limit]
     all_fires = [(int(r[fields["year"]]), geoms[r["_row"]]) for r in records]

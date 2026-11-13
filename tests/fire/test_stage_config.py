@@ -71,3 +71,26 @@ def test_fire_too_large_is_skipped_and_reported_not_fatal():
     by_id = {p["fire"].fire_id: p for p in plans}
     assert "max_chips" in by_id["2023-2"]["skipped"] and by_id["2023-2"]["origins"] == []
     assert len(by_id["2023-1"]["origins"]) == 1
+
+
+def test_split_fire_rows_are_merged():
+    from datetime import date
+
+    from ml.fire.stage import merge_split_fires
+
+    fields = {"fire_id": "NFIREID", "year": "YEAR", "area_ha": "POLY_HA", "start": "AG_SDATE", "end": "AG_EDATE"}
+    a, b, c = box(-85.10, 48.0, -85.05, 48.05), box(-85.05, 48.0, -85.00, 48.05), box(-80, 47, -79.9, 47.1)
+    records = [
+        {"NFIREID": 284.0, "YEAR": 2021.0, "POLY_HA": 19367.0, "AG_SDATE": "2021-07-10", "AG_EDATE": "2021-09-14", "_row": 1, "lon": 0, "lat": 0},
+        {"NFIREID": 284.0, "YEAR": 2021.0, "POLY_HA": 2999.0, "AG_SDATE": "2021-07-08", "AG_EDATE": None, "_row": 2, "lon": 0, "lat": 0},
+        {"NFIREID": 5.0, "YEAR": 2021.0, "POLY_HA": 900.0, "AG_SDATE": None, "AG_EDATE": None, "_row": 3, "lon": -79.95, "lat": 47.05},
+    ]
+    merged, geoms = merge_split_fires(records, {1: a, 2: b, 3: c}, fields)
+    assert len(merged) == 2
+    fire = next(r for r in merged if r["NFIREID"] == 284.0)
+    assert fire["POLY_HA"] == 22366.0 and fire["_merged_rows"] == 2
+    assert fire["AG_SDATE"] == date(2021, 7, 8) and fire["AG_EDATE"] == date(2021, 9, 14)
+    assert geoms[fire["_row"]].area == pytest.approx(a.union(b).area)
+    assert -85.10 < fire["lon"] < -85.00
+    ids = [f.fire_id for f in select_fires(merged, load_stage_config(CONFIG)["selection"])]
+    assert ids == ["2021-284", "2021-5"]  # merged rows no longer trip the duplicate check

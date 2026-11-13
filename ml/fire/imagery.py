@@ -30,6 +30,17 @@ def band_scaling(item: Mapping[str, Any], asset: str) -> tuple[float, float, Opt
             raise ImageryError(f"{item.get('id')}: asset {asset!r} has no usable {name} ({value!r})")
     if scale <= 0:
         raise ImageryError(f"{item.get('id')}: asset {asset!r} scale must be positive")
+    # Earth Search marks items whose pixels already have the processing-baseline >= 04.00 offset applied
+    # (`earthsearch:boa_offset_applied: true`) but still lists offset -0.1 in raster:bands. Applying it again subtracts
+    # 0.1 twice: the ML1 pilot (2026-11-12) found baseline 03.01 and 05.00 copies of one scene with near-equal DN
+    # (blue median 116 vs 118), and negative visible reflectance when the offset was applied.
+    applied = (item.get("properties") or {}).get("earthsearch:boa_offset_applied")
+    if not (applied is True or applied is False or applied is None):  # identity: 1 == True must not pass
+        raise ImageryError(f"{item.get('id')}: earthsearch:boa_offset_applied must be true or false, not {applied!r}")
+    if applied is True:
+        offset = 0.0
+    elif applied is None and offset != 0:
+        raise ImageryError(f"{item.get('id')}: offset {offset} listed but earthsearch:boa_offset_applied is missing; ambiguous")
     nodata = band.get("nodata")
     return float(scale), float(offset), (None if nodata is None else float(nodata))
 
@@ -57,8 +68,20 @@ def search_window(fire_end: Optional[date], year: int, days_after: int, fallback
     return start, start + timedelta(days=days_after)
 
 
-def choose_scene(items: Iterable[Mapping[str, Any]], start: date, end: date, max_cloud: float) -> Optional[Mapping[str, Any]]:
-    """The item with the lowest cloud cover inside [start, end] and under max_cloud; ties go to the earlier date, then the ID."""
+def choose_scene(
+    items: Iterable[Mapping[str, Any]],
+    start: date,
+    end: date,
+    max_cloud: float,
+    must_cover: Any = None,
+) -> Optional[Mapping[str, Any]]:
+    """The item with the lowest cloud cover inside [start, end] and under max_cloud; ties go to the earlier date, then the ID.
+
+    must_cover: a WGS84 shapely geometry (e.g. one chip) that the item's footprint must fully cover. Tiles at the edge of a
+    satellite swath can be mostly empty, so an item that only touches the area is not enough.
+    """
+    from shapely.geometry import shape
+
     best = None
     for item in items:
         props = item.get("properties") or {}
@@ -66,6 +89,10 @@ def choose_scene(items: Iterable[Mapping[str, Any]], start: date, end: date, max
         when = props.get("datetime")
         if cloud is None or when is None:
             continue
+        if must_cover is not None:
+            footprint = item.get("geometry")
+            if not footprint or not shape(footprint).covers(must_cover):
+                continue
         day = datetime.fromisoformat(str(when).replace("Z", "+00:00")).date()
         if not (start <= day <= end) or float(cloud) >= max_cloud:
             continue

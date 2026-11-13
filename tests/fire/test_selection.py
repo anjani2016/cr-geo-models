@@ -95,3 +95,16 @@ def test_datetime_and_nat_end_dates_become_plain_dates():
 def test_unusable_area_fails_closed(area):
     with pytest.raises(SelectionError, match="area"):
         select_fires([rec(1, ha=area)], CFG)
+
+
+def test_decimal_nbac_ids_and_years_become_integers():
+    record = rec(2.0)
+    record["YEAR"] = 2023.0
+    assert select_fires([record], CFG)[0].fire_id == "2023-2"
+
+
+def test_fire_key_matches_select_fires_ids():
+    from ml.fire.selection import fire_key
+
+    assert fire_key(2023.0, 2.0) == "2023-2" == select_fires([dict(rec(2.0), YEAR=2023.0)], CFG)[0].fire_id
+    assert fire_key(2023, "ON-17") == "2023-ON-17"

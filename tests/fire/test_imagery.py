@@ -6,14 +6,26 @@ import pytest
 from ml.fire.imagery import ImageryError, band_scaling, choose_scene, invalid_mask, search_window, to_reflectance
 
 
-def item(scale=0.0001, offset=-0.1, nodata=0, extra=None):
+def item(scale=0.0001, offset=-0.1, nodata=0, extra=None, applied=False):
     band = {"scale": scale, "offset": offset, "nodata": nodata}
     band.update(extra or {})
-    return {"id": "S2X", "assets": {"blue": {"raster:bands": [band]}}}
+    props = {} if applied is None else {"earthsearch:boa_offset_applied": applied}
+    return {"id": "S2X", "properties": props, "assets": {"blue": {"raster:bands": [band]}}}
 
 
 def test_scaling_read_from_item():
     assert band_scaling(item(), "blue") == (0.0001, -0.1, 0.0)
+
+
+def test_offset_already_applied_is_not_applied_again():
+    assert band_scaling(item(applied=True), "blue") == (0.0001, 0.0, 0.0)
+    assert band_scaling(item(offset=0, applied=None), "blue") == (0.0001, 0.0, 0.0)
+
+
+@pytest.mark.parametrize("applied", [None, "yes", 1])
+def test_ambiguous_offset_flag_fails_closed(applied):
+    with pytest.raises(ImageryError):
+        band_scaling(item(applied=applied), "blue")
 
 
 @pytest.mark.parametrize("scale,offset", [(None, -0.1), (0.0001, None), (0, -0.1), (-1, 0), (float("nan"), 0), (True, 0), ("0.0001", 0)])
@@ -71,3 +83,14 @@ def test_choose_scene_ties_and_none():
     assert choose_scene(items, date(2023, 9, 1), date(2023, 9, 30), 20)["id"] == "b"
     assert choose_scene([scene("a", "2023-09-02", 50)], date(2023, 9, 1), date(2023, 9, 30), 20) is None
     assert choose_scene([{"id": "x", "properties": {}}], date(2023, 9, 1), date(2023, 9, 30), 20) is None
+
+
+def test_choose_scene_requires_full_coverage_when_asked():
+    from shapely.geometry import box
+
+    chip = box(-85.1, 48.0, -85.0, 48.1)
+    covering = dict(scene("cover", "2023-09-05", 10), geometry=box(-86, 47, -84, 49).__geo_interface__)
+    partial = dict(scene("edge", "2023-09-05", 0), geometry=box(-85.05, 47, -84, 49).__geo_interface__)
+    no_geom = scene("nogeom", "2023-09-05", 0)
+    assert choose_scene([covering, partial, no_geom], date(2023, 9, 1), date(2023, 9, 30), 20, must_cover=chip)["id"] == "cover"
+    assert choose_scene([partial, no_geom], date(2023, 9, 1), date(2023, 9, 30), 20, must_cover=chip) is None
